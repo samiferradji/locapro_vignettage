@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="row">
+        <div class="col-lg-8">
+
+        </div>
+        <div class="col-lg-4">
+            <div style="margin-bottom: 5px">
+                <input id="q" type="search" class="form-control" placeholder="Recherche produit ou lot ..."
+                       oninput="doSearch()" autofocus>
+
+            </div>
+        </div>
+    </div>
+
+    <div style="height: 400px">
+        <table id="parent_table" style="width: 100%; height: 100%"></table>
+    </div>
+    <div style="height: 220px">
+        <table id="child_table" style="width: 100%; height: 100%"></table>
+    </div>
+    <script type="text/javascript">
+
+        {#   page and widget initialisation and taping ergonomy #}
+        function initialisation() {
+
+            var parent_table = $('#parent_table').datagrid({
+                url: '/list_of_labeling/',
+                idField: 'id',
+                striped: true,
+                rownumbers: true,
+                singleSelect: true,
+                pagination: true,
+                title: 'Bons',
+                toolbar: [{
+                    id: 'button_print',
+                    iconCls: 'icon-print',
+                    text: 'Imprimer',
+                    handler: function () {
+                        var current_id = parent_table.datagrid('getSelected')
+                        $.post('/production/', {
+                            action: 'print',
+                            parent_id: current_id.id,
+                            csrfmiddlewaretoken: '{{ csrf_token }}'
+                        }).done(function (data) {
+                            var w = window.open('about:blank', 'windowname');
+                            w.document.write(data);
+                            w.document.close()
+                        });
+                    }
+                }
+                ],
+                onSelect: function () {
+                    child_table.datagrid('reload', {parent_id: parent_table.datagrid('getSelected').id})
+                },
+                columns: [[
+                    {field: 'id', title: 'N°', sortable: "true"},
+                    {field: 'labeling_date', title: 'Date', sortable: "true"},
+                    {field: 'table__table_number', title: 'Table', align: 'right', sortable: "true"},
+                    {field: 'lot__produit__produit', title: 'Produit', width: 100, sortable: "true"},
+                    {field: 'lot__lot', title: 'Lot', sortable: "true"},
+                    {field: 'lot__peremption', title: 'DDP', align: 'right', sortable: "true"},
+                    {field: 'lot__ppa', title: 'PPA', align: 'right', sortable: "true"},
+                    {field: 'lot__colisage', title: 'Colisage', align: 'right', sortable: "true"},
+                ]],
+                method: 'get',
+                selectOnNavigation: false,
+                fitColumns: true,
+            });
+            var child_table = $('#child_table').datagrid({
+                url: '/labeling_details/',
+                idField: 'id',
+                striped: true,
+                rownumbers: true,
+                singleSelect: true,
+                title: 'Détails',
+                queryParams: {parent_id: null},
+                columns: [[
+                    {field: 'employee__nom', title: 'Vignetteur', width: 100},
+                    {field: 'labeling_qtt', title: 'Qtt vignettes', align: 'right'},
+                    {field: 'souches_qtt', title: 'Qtt souches', align: 'right'},
+                    {field: 'unlabeling_qtt', title: 'Qtt dévignettage', align: 'right'}
+                ]],
+                method: 'get',
+                selectOnNavigation: false,
+                fitColumns: true
+            });
+            $('#view_statistics').removeClass('active');
+            $('#administration').removeClass('active');
+            $('#add_labeling').removeClass('active');
+            $('#view_history').addClass('active');
+        }
+        function doSearch() {
+            $('#parent_table').datagrid('load', {
+                q: $('#q').val(),
+            });
+        }
+        initialisation();
+    </script>
+{% endblock %}

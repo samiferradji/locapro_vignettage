@@ -1,0 +1,98 @@
+<p align="center" style="font-size: 18px">Statistiques du vignettage</p>
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Statistiques de vignettage</title>
+
+    <style>
+        @font-face {
+            font-family: 'C39';
+            src: url('{% static 'fonts/c39m3-webfont.woff2' %}') format('woff2'),
+            url('{% static 'fonts/c39m3-webfont.woff' %}') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: MyUbuntu;
+            src: url('{% static 'fonts/Ubuntu-L.ttf'%}')
+        }
+
+        p {
+            font-family: MyUbuntu;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: MyUbuntu;
+            font-size: 12px;
+            width: 19.7cm;
+        }
+
+        table, td, th {
+            border: 1px solid;
+            font-size: 14px;
+            align-content: center;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th {
+            height: 30px;
+        }
+
+        td {
+            padding: 3px;
+        }
+
+        .code_barre {
+            font-family: C39;
+            font-size: 28px;
+            padding: 5px
+        }
+
+    </style>
+</head>
+<body>
+<table>
+    <tr>
+        <th>Date début de période</th>
+        <th>Date fin de période</th>
+    </tr>
+    <tr>
+        <td align="center"><strong>{{ date_debut }} </strong></td>
+        <td align="center"><strong>{{ date_fin }} </strong></td>
+    </tr>
+</table>
+<br>
+<br>
+<table>
+    <tr>
+        <th>Code RH</th>
+        <th>Vignetteur</th>
+        <th>Quantité de vignettes</th>
+        <th>Quantité de soches</th>
+        <th>Quantité de dé-vignettage</th>
+        <th>Quantité Total</th>
+    </tr>
+    {% for item in query %}
+        <tr>
+            <td>{{ item.employee__code_RH }}</td>
+            <td>{{ item.employee__nom }}</td>
+            <td align="right">{{ item.labeling_qtt__sum }}</td>
+            <td align="right">{{ item.souches_qtt__sum }}</td>
+            <td align="right">{{ item.unlabeling_qtt__sum }}</td>
+            <td align="right">{{ item.total }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<br>
+<br>
+</body>
+</html>

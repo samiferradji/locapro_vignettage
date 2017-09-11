@@ -1,0 +1,565 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="easyui-panel" data-options="border:false" style="padding:5px;height: 40px">
+        <a id="save_button"></a>
+        <a id="cancel_button"></a>
+    </div>
+    <div id='main_div' class="container" style=" width: 100%;margin: 5px; height:auto">
+        <div id="p" class="easyui-panel" title="Entête facture" style="width:100%;height:auto;padding:10px">
+
+                <div id="date_operation" style="width: 20%"></div>
+                <a id="date_message" class="mymessage" style="color: red"></a>
+                <div id="n_table" style="width:20%"></div>
+                <a id="produit_message" class="mymessage" style="color: red"></a>
+                <div id="lot" style="width:20%"></div>
+                <a id="lot_message" class="mymessage" style="color: red"></a>
+                <a href="javascript:void(0)" id="create_header_button"></a>
+                <input id="header_id" value="0" hidden>
+
+        </div>
+        <div style="margin-top: 10px">
+        </div>
+        <table id="saisie_table" style="width:100%;height:auto;padding:10px">
+
+        </table>
+        <div id="dialog_add_line" style="">
+            <div style="margin: 3%">
+                <div id="vignetteur" style="width: 100%"></div>
+                <a id="vignetteur_message" class="mymessage" style="color: red"></a>
+                <div style="margin-top: 10px"></div>
+                <div id="qtt_vignettes" style="width: 100%"></div>
+                <a id="qtt_vignettes_message" class="mymessage" style="color: red"></a>
+                <div style="margin-top: 10px"></div>
+                <div id="qtt_souches" style="width: 100%"></div>
+                <a id="qtt_souches_message" class="mymessage" style="color: red"></a>
+                <div style="margin-top: 10px"></div>
+                <div id="qtt_un_vignettes" style="width: 100%"></div>
+                <a id="qtt_un_vignette_message" class="mymessage" style="color: red"></a>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+
+        {#   page and widget initialisation and taping ergonomy #}
+        function initialisation() {
+            function myformatter(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate();
+                return y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+            }
+
+            function myparser(s) {
+                if (!s) return new Date();
+                var ss = (s.split('-'));
+                var y = parseInt(ss[0], 10);
+                var m = parseInt(ss[1], 10);
+                var d = parseInt(ss[2], 10);
+                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                    return new Date(y, m - 1, d);
+                } else {
+                    return new Date();
+                }
+            }
+
+            var save_button = $('#save_button').linkbutton({
+                text: 'Enregistrer',
+                iconCls: 'icon-save',
+                onClick: function () {
+                    commit()
+                }
+            });
+            var cancel_button = $('#cancel_button').linkbutton({
+                text: 'Annuler',
+                iconCls: 'icon-cancel',
+                onClick: function () {
+                    cancel()
+                }
+            });
+            var date_operation = $('#date_operation').datebox({
+                label: 'Date',
+                labelPosition: 'top',
+                parser: myparser,
+                formatter: myformatter,
+                onChange: function () {
+                    n_table.textbox('textbox').focus();
+                }
+            });
+            var n_table = $('#n_table').combobox({
+                url: '/list_des_tables/',
+                label: 'N° de Table',
+                labelPosition: 'top',
+                valueField: 'id',
+                textField: 'table_number',
+                method: 'get',
+                limitToList: true,
+                selectOnNavigation: false,
+                onSelect: function () {
+                    lot.textbox('textbox').focus();
+                }
+            });
+            var lot = $('#lot').combogrid({
+                url: '/list_des_lots/',
+                label: 'Produit / Lot',
+                labelPosition: 'top',
+                idField: 'id',
+                mode:'remote',
+                textField: 'lot',
+                panelWidth: 500,
+                method: 'get',
+                limitToList: true,
+                striped: true,
+                rownumbers: true,
+                columns: [[
+                     {field: 'produit__produit', title: 'Produit'},
+                    {field: 'lot', title: 'Lot'},
+                    {field: 'peremption', title: 'DDP', align: 'center'},
+                    {field: 'ppa', title: 'PPA', align: 'right'},
+                    {field: 'colisage', title: 'Colisage', align: 'right'}
+                ]],
+                selectOnNavigation: false,
+                queryParams: {'parent_id': 1},
+                onSelect: function () {
+                    create_header_button.linkbutton().focus();
+                }
+            });
+            var create_header_button = $('#create_header_button').linkbutton({
+                text: 'Créer ',
+                onClick: function () {
+                    if (validate_parent_inputs()) {
+                        create_new_parent()
+                    }
+                }
+            });
+            var dialogue_add_lines = $('#dialog_add_line').dialog({
+                title: 'Ajouter',
+                width: 400,
+                height: 350,
+                closed: true,
+                modal: true,
+                onOpen: function () {
+                    vignetteur.textbox('textbox').focus();
+                },
+                buttons: [
+                    {
+                        id: 'button_post_new_line',
+                        text: 'Ajouter',
+                        iconCls: 'icon-add',
+                        handler: function () {
+                            validate_details_input();
+                            post_new_line();
+                        }
+
+                    },
+                    {
+                        id: 'button_close_add_lines_dialog',
+                        text: 'Fermer',
+                        iconCls: 'icon-cancel',
+                        handler: function () {
+                            dialogue_add_lines.dialog('close');
+                        }
+                    }
+                ]
+            });
+            var vignetteur = $('#vignetteur').combobox({
+                url: '/list_des_employes/',
+                label: 'Vignetteur',
+                labelPosition: 'top',
+                valueField: 'id',
+                textField: 'nom',
+                method: 'get',
+                limitToList: true,
+                selectOnNavigation: false,
+                onSelect: function () {
+                    qtt_vignettes.textbox('textbox').focus();
+                }
+            });
+            var qtt_vignettes = $('#qtt_vignettes').numberbox({
+                label: 'Nombre de vignettes',
+                labelPosition: 'top',
+                onChange: function () {
+                    $('#qtt_souches').numberbox('textbox').focus()
+                }
+            });
+            var qtt_souches = $('#qtt_souches').numberbox({
+                label: 'Nombre de souches',
+                labelPosition: 'top',
+                onChange: function () {
+                    $('#qtt_un_vignettes').numberbox('textbox').focus()
+                }
+            });
+            var qtt_un_vignettes = $('#qtt_un_vignettes').numberbox({
+                label: 'Qtt de Dé-vignettage',
+                labelPosition: 'top',
+                onChange: function () {
+                    $('#button_post_new_line').linkbutton().focus()
+                }
+            });
+            var saisie_table = $('#saisie_table').datagrid({
+                url: '/saisie_en_cours/',
+                idField: 'id',
+                striped: true,
+                rownumbers: true,
+                singleSelect: true,
+                title: 'Saisie en cours',
+                queryParams: {parent_id: $('#header_id').val()},
+                toolbar: [{
+                    id: 'button_add_new_line',
+                    iconCls: 'icon-add',
+                    text: 'Ajouter',
+                    handler: function () {
+                        dialogue_add_lines.dialog('open')
+                    }
+                },
+                    {
+                        id: 'button_remove_line',
+                        iconCls: 'icon-clear',
+                        text: 'Supprimer',
+                        handler: function () {
+                            remove_line()
+                        }
+                    }],
+                columns: [[
+                    {field: 'employee__nom', title: 'Vignetteur'},
+                    {field: 'labeling_qtt', title: 'Qtt vignettes', align: 'right'},
+                    {field: 'souches_qtt', title: 'Qtt souches', align: 'right'},
+                    {field: 'unlabeling_qtt', title: 'Qtt dévignettage', align: 'right'}
+                ]],
+                method: 'get',
+                selectOnNavigation: false,
+
+            });
+
+            {#   functions for input data validation #}
+
+            function validate_parent_inputs() {
+                if (!date_operation.datebox('getValue')) {
+                    $('#date_message').append("Ce champ est obligatoire !!!!");
+                    date_operation.datebox('textbox').focus();
+                    return false
+                }
+                else if (!n_table.combobox('getValue')) {
+                    $('#produit_message').append("Ce champ est obligatoire !!!!");
+                    n_table.combobox('textbox').focus();
+                    return false
+                }
+                else if (!lot.combogrid('getValue')) {
+                    $('#lot_message').append("Ce champ est obligatoire !!!!");
+                    lot.combogrid('textbox').focus();
+                    return false
+                }
+                else {
+                    return true
+                }
+            }
+
+            function validate_details_input() {
+                var vignetteur_id = vignetteur.combobox('getValue');
+                var labeling_qtt = qtt_vignettes.numberbox('getValue');
+                var souches_qtt = qtt_souches.numberbox('getValue');
+                var unlabeling_qtt = qtt_un_vignettes.numberbox('getValue');
+                if (!vignetteur_id) {
+                    $('#vignetteur_message').append("Ce champ est obligatoire !!!!");
+                    vignetteur.textbox('textbox').focus();
+                    return false
+                }
+                else if (!labeling_qtt) {
+                    $('#qtt_vignettes_message').append("Ce champ est obligatoire !!!!");
+                    labeling_qtt.textbox('textbox').focus();
+                    return false
+                }
+                else if (!souches_qtt) {
+                    $('#qtt_souches_message').append("Ce champ est obligatoire !!!!");
+                    souches_qtt.textbox('textbox').focus();
+                    return false
+                }
+                else if (!unlabeling_qtt) {
+                    $('#qtt_un_vignette_message').append("Ce champ est obligatoire !!!!");
+                    unlabeling_qtt.textbox('textbox').focus();
+                    return false
+                }
+                else {
+                    return true
+                }
+            }
+
+            {#   CRUD functions #}
+
+            function remove_line() {
+                var action = 'remove_line';
+                var id_line = saisie_table.datagrid('getSelected');
+                $.post('/production/', {
+                    action: action,
+                    id_line: id_line.id,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                }).done(function (response) {
+                    if (response.status == 'Error') {
+                        $.messager.progress('close');
+                        var obj = saisie_table.datagrid();
+                        error_message(response.status_message, obj)
+                    }
+                    else {
+                        $.messager.progress('close');
+                        success_message(response.status_message);
+                        saisie_table.datagrid('reload');
+                    }
+                }).fail(function (xhr, status, error) {
+                    $.messager.progress('close');
+                    var obj = saisie_table.datagrid();
+                    error_message(error, obj)
+                })
+            }
+
+            function commit() {
+
+                var parent_id = $('#header_id').val();
+                var action = 'save';
+                $.messager.progress({
+                    title: 'Enregistrement des données',
+                    text: 'Veuilez patientez... '
+                });
+                $.post('/production/', {
+                    action: action,
+                    parent_id: parent_id,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                }).done(function (response) {
+                    if (response.status === 'Error') {
+                        $.messager.progress('close');
+                        error_message(response.status_message)
+
+                    }
+                    else {
+                        saisie_table.datagrid('loadData', {"total": 0, "rows": []});
+                        $.messager.progress('close');
+                        refresh_all();
+                        success_message(response.status_message)
+                        $.post('/production/', {
+                            action: 'print',
+                            parent_id: response.new_id,
+                            csrfmiddlewaretoken: '{{ csrf_token }}'
+                        }).done(function (data) {
+                            var w = window.open('about:blank', 'windowname');
+                            w.document.write(data);
+                            w.document.close()
+                        });
+                    }
+                }).fail(function (xhr, status, error) {
+                    $.messager.progress('close');
+                    error_message(error)
+                })
+
+            }
+
+            function cancel() {
+
+
+                var parent_id = $('#header_id').val();
+                var action = 'cancel';
+                $.messager.progress({
+                    title: 'Annulation des données',
+                    text: 'Veuilez patientez... '
+                });
+                $.post('/production/', {
+                    action: action,
+                    parent_id: parent_id,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                }).done(function (response) {
+                    if (response.status == 'Error') {
+                        $.messager.progress('close');
+                        error_message(response.status_message)
+
+                    }
+                    else {
+                        saisie_table.datagrid('loadData', {"total": 0, "rows": []});
+                        $.messager.progress('close');
+                        refresh_all();
+                        success_message(response.status_message)
+
+                    }
+                }).fail(function (xhr, status, error) {
+                    $.messager.progress('close');
+                    error_message(error)
+                })
+
+            }
+
+            function post_new_line() {
+                if (validate_details_input()) {
+                    var parent_id = $('#header_id').val();
+                    var action = 'add_line';
+                    var vignetteur_id = vignetteur.combobox('getValue');
+                    var current_qtt_vignettes = qtt_vignettes.numberbox('getValue');
+                    var current_qtt_souches = qtt_souches.numberbox('getValue');
+                    var current_qtt_un_vignettes = qtt_un_vignettes.numberbox('getValue');
+                    $.messager.progress({
+                        title: 'Enregistrement des données',
+                        text: 'Veuilez patientez... '
+                    });
+                    $.post('/production/', {
+                        action: action,
+                        parent_id: parent_id,
+                        employee_id: vignetteur_id,
+                        labeling_qtt: current_qtt_vignettes,
+                        souches_qtt: current_qtt_souches,
+                        unlabeling_qtt: current_qtt_un_vignettes,
+                        csrfmiddlewaretoken: '{{ csrf_token }}'
+                    }).done(function (response) {
+                        if (response.status == 'Error') {
+                            $.messager.progress('close');
+                            var obj = vignetteur_id.combobox('textbox');
+                            error_message(response.status_message, obj)
+                        }
+                        else {
+                            $.messager.progress('close');
+                            success_message(response.status_message);
+                            saisie_table.datagrid('reload', {parent_id: $('#header_id').val()});
+                            refresh_add_details_dialog();
+                        }
+                    }).fail(function (xhr, status, error) {
+                        $.messager.progress('close');
+                        var obj = vignetteur.combobox('textbox');
+                        error_message(error, obj)
+                    })
+                }
+            }
+
+            function create_new_parent() {
+                if (validate_parent_inputs()) {
+                    $.post('/production/', {
+                        action: 'create_parent',
+                        date_operation: date_operation.datebox('getValue'),
+                        table_id: n_table.combobox('getValue'),
+                        lot_id: lot.combogrid('getValue'),
+                        csrfmiddlewaretoken: '{{ csrf_token }}'
+                    }).done(function (response) {
+                            if (response.status === 'Error') {
+                                error_message(response.status_message, date_operation.textbox('textbox'))
+                            }
+                            else {
+                                $('#header_id').val(response.new_header_id);
+                                freez_parent_data();
+                                unfreez_details_data();
+                                freez_creat_parent_button()
+                                dialogue_add_lines.dialog('open');
+                                success_message(response.status_message)
+                            }
+                        }
+                    ).fail(function (xhr, status, error) {
+                        error_message(xhr, date_operation.textbox('textbox'))
+                    })
+                }
+            }
+
+            {#   functions enabling / disabling widgets   #}
+
+            function freez_parent_data() {
+                date_operation.datebox('disable');
+                n_table.combobox('disable');
+                lot.combobox('disable');
+                unfreez_header_buttons()
+            }
+
+            function freez_details_data() {
+                freez_header_buttons()
+                $('#button_add_new_line').linkbutton('disable');
+                $('#button_remove_line').linkbutton('disable');
+            }
+
+            function unfreez_parent_data() {
+                unfreez_header_buttons()
+                date_operation.datebox('enable');
+                n_table.combobox('enable');
+                lot.combobox('enable');
+            }
+
+            function freez_creat_parent_button() {
+                create_header_button.linkbutton('disable')
+            }
+
+            function unfreez_creat_parent_button() {
+                create_header_button.linkbutton('enable')
+            }
+
+            function unfreez_details_data() {
+                $('#button_add_new_line').linkbutton('enable');
+                $('#button_remove_line').linkbutton('enable');
+            }
+
+            function freez_header_buttons() {
+                save_button.linkbutton('disable');
+                cancel_button.linkbutton('disable');
+            }
+
+            function unfreez_header_buttons() {
+                save_button.linkbutton('enable');
+                cancel_button.linkbutton('enable');
+            }
+
+            {#   functions for refreshing #}
+
+            function refresh_add_details_dialog() {
+                qtt_vignettes.numberbox('clear');
+                qtt_souches.numberbox('clear').numberbox('textbox');
+                qtt_un_vignettes.numberbox('clear');
+                vignetteur.combobox('clear').combobox('textbox').focus();
+            }
+
+            function refresh_all() {
+                date_operation.datebox('clear');
+                n_table.combobox('clear');
+                lot.combogrid('clear');
+                unfreez_parent_data();
+                freez_details_data();
+                refresh_add_details_dialog();
+                unfreez_creat_parent_button();
+                $('.mymessage').empty();
+                date_operation.datebox('textbox').focus();
+            }
+
+            {#   functions for feedback-messages #}
+
+            function success_message(msg) {
+                $.messager.show({
+                    msg: '<div class="messager-icon messager-info"></div><div>' + msg + '</div>',
+                    showType: 'show',
+                    timeout: 1000,
+                    style: {
+                        left: '',
+                        right: 0,
+                        top: document.body.scrollTop + document.documentElement.scrollTop + 40,
+                        bottom: ''
+                    },
+                    iconCls: 'icon-ok'
+                });
+
+
+            }
+
+            function error_message(msg, obj) {
+                $.messager.alert({
+                    title: 'Erreur',
+                    msg: '<div class="messager-icon messager-error"></div><div>' + msg + '</div>',
+                    onClose: function () {
+                        if (obj) {
+                            obj.focus()
+                        }
+                    }
+
+                });
+            }
+
+            freez_details_data();
+            $('#view_statistics').removeClass('active');
+            $('#administration').removeClass('active');
+            $('#view_history').removeClass('active');
+            $('#add_labeling').addClass('active');
+
+        }
+         initialisation();
+        $(document).ready(function () {
+          $('#date_operation').datebox('textbox').focus()
+        });
+
+    </script>
+
+{% endblock %}

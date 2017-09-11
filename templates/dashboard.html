@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="row" style="margin-bottom: 5px">
+        <div class="col-lg-3">
+            <label>Vigneteur</label>
+            <input id="vignetteur" style="width: 100%"></input>
+        </div>
+
+        <div class="col-lg-3">
+            <label>Date début</label>
+            <input id="date_debut" style="width: 100%">
+        </div>
+
+        <div class="col-lg-3">
+            <label>Date fin</label>
+            <input id="date_fin" style="width: 100%">
+        </div>
+        <div class="col-lg-3">
+            <input type="button" class="btn btn-success" id="refresh_buttun" value="Actualiser" style="margin-top: 7%">
+        </div>
+
+    </div>
+
+    <div class="row" style="margin-top: 5%">
+        <div class="col-lg-6">
+            <div id="container" style="margin-bottom: 5px; height: 500px"></div>
+        </div>
+        <div class="col-lg-6">
+            <div id="container2" style="margin-bottom: 5px; height: 500px"></div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+
+        {#   page and widget initialisation and taping ergonomy #}
+        $(document).ready(function () {
+            function myformatter(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate();
+                return y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+            }
+
+            function myparser(s) {
+                if (!s) return new Date();
+                var ss = (s.split('-'));
+                var y = parseInt(ss[0], 10);
+                var m = parseInt(ss[1], 10);
+                var d = parseInt(ss[2], 10);
+                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                    return new Date(y, m - 1, d);
+                } else {
+                    return new Date();
+                }
+            }
+
+            $('#date_debut').datebox({
+                parser: myparser,
+                formatter: myformatter,
+            }).datebox('setValue', '{{ date_debut}}');
+            $('#date_fin').datebox({
+                parser: myparser,
+                formatter: myformatter,
+            }).datebox('setValue', '{{ date_fin }}');
+            var date_debut = '{{ date_debut}}';
+            var date_fin = '{{ date_fin }}';
+            var vignetteur = $('#vignetteur').combobox({
+                url: '/list_des_employes/',
+                labelPosition: 'top',
+                valueField: 'id',
+                textField: 'nom',
+                method: 'get',
+                limitToList: true,
+                selectOnNavigation: false,
+            });
+
+
+            $('#dashoard').addClass('active');
+            $('#view_statistics').removeClass('active');
+            $('#administration').removeClass('active');
+            $('#add_labeling').removeClass('active');
+            $('#view_history').removeClass('active');
+            $('#refresh_buttun').click(
+                function () {
+                    var date_debut = $('#date_debut').datebox('getValue');
+                    var date_fin = $('#date_fin').datebox('getValue');
+
+
+                }
+            )
+            function view_chart() {
+                var date_debut = $('#date_debut').datebox('getValue');
+                var date_fin = $('#date_fin').datebox('getValue');
+                $.getJSON('/statistics/', {
+                    action: 'vignetteurs_staticstics_chart',
+                    date_debut: date_debut,
+                    date_fin: date_fin
+                }).done(function (result) {
+                    var chart = {
+                        type: 'bar'
+                    };
+                    var title = {
+                        text: 'Quantité de vignettes par employé'
+                    };
+                    var subtitle = {
+                        text: 'At Pharma'
+                    };
+                    var xAxis = {
+                        title: {
+                            text: 'Employés'
+                        }
+                    };
+                    var yAxis = {
+                        title: {
+                            text: 'Quantité de vignettes'
+                        },
+                        labels: {
+                            enabled: true,
+                            text: ['aa', 'bb', 'cc']
+                        }
+                    };
+
+                    var tooltip = {
+                        valueSuffix: ' vignettes',
+
+                    }
+                    var plotOptions = {
+                        bar: {
+                            dataLabels: {
+                                enabled: true
+                            }
+                        }
+                    };
+                    var legend = {
+                        layout: 'vertical',
+                        align: 'right',
+                        verticalAlign: 'middle',
+                        borderWidth: 0
+                    };
+                    var json = {};
+                    json.chart = chart;
+                    json.title = title;
+                    json.subtitle = subtitle;
+                    json.xAxis = xAxis;
+                    json.yAxis = yAxis;
+                    json.tooltip = tooltip;
+                    json.legend = legend;
+                    json.series = result;
+                    json.plotOptions = plotOptions;
+                    $('#container').highcharts(json);
+                })
+            }
+
+            function view_chart2() {
+                var date_debut = $('#date_debut').datebox('getValue');
+                var date_fin = $('#date_fin').datebox('getValue');
+                var vignetteur_id = vignetteur.combobox('getValue');
+                $.getJSON('/statistics/', {
+                    action: 'vignetteurs_staticstics_by_day_chart',
+                    date_debut: date_debut,
+                    date_fin: date_fin,
+                    vignetteur:vignetteur_id
+                }).done(function (result) {
+                    vignetteur.combobox('setValue',result[0].vignetteur)
+                    var chart = {
+                        type: 'column'
+                    };
+                    var title = {
+                        text: 'Quantité de vignettes par jour du vignetteur séléctionné'
+                    };
+                    var subtitle = {
+                        text: 'At Pharma'
+                    };
+                    var xAxis = {
+                        title: {
+                            text: 'Journée'
+                        }
+                    };
+                    var yAxis = {
+                        title: {
+                            text: 'Quantité de vignettes'
+                        },
+                        labels: {
+                            enabled: true,
+                            text: ['aa', 'bb', 'cc']
+                        }
+                    };
+
+                    var tooltip = {
+                        valueSuffix: ' vignettes',
+
+                    }
+                    var plotOptions = {
+                        bar: {
+                            dataLabels: {
+                                enabled: true
+                            }
+                        }
+                    };
+                    var legend = {
+                        layout: 'vertical',
+                        align: 'right',
+                        verticalAlign: 'middle',
+                        borderWidth: 0
+                    };
+                    var json = {};
+                    json.chart = chart;
+                    json.title = title;
+                    json.subtitle = subtitle;
+                    json.xAxis = xAxis;
+                    json.yAxis = yAxis;
+                    json.tooltip = tooltip;
+                    json.legend = legend;
+                    json.series = result;
+                    json.plotOptions = plotOptions;
+                    $('#container2').highcharts(json);
+                })
+            }
+
+            $('#refresh_buttun').click(function () {
+                view_chart()
+                 view_chart2()
+            })
+            $('#dashoard_id').addClass('active');
+            $('#view_statistics').removeClass('active');
+            $('#administration').removeClass('active');
+            $('#add_labeling').removeClass('active');
+            $('#view_history').removeClass('active');
+
+            view_chart()
+            view_chart2()
+
+        })
+
+    </script>
+{% endblock %}

@@ -1,0 +1,112 @@
+<p align="center" style="font-size: 18px">Bon de vignettage N°{{ parent.id }} </p>
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bon de vignettage</title>
+
+    <style>
+        @font-face {
+            font-family: 'C39';
+            src: url('{% static 'fonts/c39m3-webfont.woff2' %}') format('woff2'),
+            url('{% static 'fonts/c39m3-webfont.woff' %}') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: MyUbuntu;
+            src: url('{% static 'fonts/Ubuntu-L.ttf'%}')
+        }
+
+        p {
+            font-family: MyUbuntu;
+            font-size: 16px;
+        }
+
+        body {
+            font-family: MyUbuntu;
+            font-size: 12px;
+            width: 19.7cm;
+        }
+
+        table, td, th {
+            border: 1px solid;
+            font-size: 14px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th {
+            height: 30px;
+        }
+
+        td {
+            padding: 3px;
+        }
+
+        .code_barre {
+            font-family: C39;
+            font-size: 28px;
+            padding: 5px
+        }
+
+    </style>
+</head>
+<body>
+<table>
+    <tr>
+        <th>Date de vignettage</th>
+        <th>Table</th>
+        <th>Produit et lot</th>
+        <th>Identifiant</th>
+    </tr>
+    <tr>
+        <td>{{ parent.labeling_date }}</td>
+        <td>{{ parent.table }}</td>
+        <td>{{ parent.lot }}</td>
+        <td class="code_barre" align="center">*{{ parent.id }}*</td>
+    </tr>
+</table>
+<br>
+<br>
+<table>
+    <tr>
+        <th>Vignetteur</th>
+        <th>Quantité de vignettes</th>
+        <th>Quantité de soches</th>
+        <th>Quantité de dé-vignettage</th>
+    </tr>
+    {% for item in details %}
+        <tr>
+
+            <td>{{ item.employee }}</td>
+            <td>{{ item.labeling_qtt }}</td>
+            <td>{{ item.souches_qtt }}</td>
+            <td>{{ item.unlabeling_qtt }}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<br>
+<br>
+<footer>
+    <table>
+        <tr>
+            <td style="width:50%">Controlé par :</td>
+            <td style="width:50%">VISA superviseur</td>
+        </tr>
+        <tr>
+            <td style="width:50%; height: 50px"></td>
+            <td style="width:50%; height: 50px;padding-bottom: 30px"></td>
+        </tr>
+    </table>
+
+</footer>
+</body>
+
+</html>

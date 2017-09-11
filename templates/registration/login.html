@@ -1,0 +1,40 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8">
+    <title>LOCAPRO 6</title>
+    <link rel="stylesheet" href="/static/login/css/style.css">
+    <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{% static 'jeasyui/themes/icon.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'jeasyui/themes/bootstrap/easyui.css' %}">
+    <script type="text/javascript" src="{% static 'jeasyui/jquery.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'jeasyui/jquery.easyui.min.js' %}"></script>
+    <script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+</head>
+<body>
+<div class="body"></div>
+<div class="grad"></div>
+<div class="header">
+    <div>Locapro <span>Vtg</span></div>
+</div>
+<br>
+<div class="login">
+    <form method="post" action="../">
+        {% csrf_token %}
+        {% if form.errors %}
+            {% for error in form.non_field_errors %}
+                <div class="alert alert-danger">
+                    <strong>{{ error|escape }}</strong>
+                </div>
+            {% endfor %}
+        {% endif %}
+        <input id="id_username" type="text" placeholder="username" name="username" required autofocus><br>
+        <input id="id_password" type="password" placeholder="password" name="password" required><br>
+        <input type="hidden" name="next" value="/dashboard/"/>
+        <input type="submit" value="Login">
+    </form>
+</div>
+</body>
+</html>

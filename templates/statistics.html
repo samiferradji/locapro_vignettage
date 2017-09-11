@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="row" style="margin-bottom: 5px">
+        <div class="col-lg-3">
+        </div>
+
+        <div class="col-lg-3">
+            <label>Date début</label>
+            <input id="date_debut">
+        </div>
+
+        <div class="col-lg-3">
+            <label>Date fin</label>
+            <input id="date_fin">
+        </div>
+        <div class="col-lg-3">
+
+            <input type="button" class="btn btn-success" id="refresh_buttun" value="Actualiser">
+        </div>
+
+    </div>
+
+
+    <div style="height: 300px">
+        <table id="vignetteur_table" style="width: 100%; height: 100%"></table>
+
+
+        <div style="height: 300px; margin-top: 10px">
+            <table id="lot_table" style="width: 100%; height: 100%"></table>
+
+        </div>
+
+    </div>
+
+    <script type="text/javascript">
+
+        {#   page and widget initialisation and taping ergonomy #}
+        function initialisation() {
+            function myformatter(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate();
+                return y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+            }
+
+            function myparser(s) {
+                if (!s) return new Date();
+                var ss = (s.split('-'));
+                var y = parseInt(ss[0], 10);
+                var m = parseInt(ss[1], 10);
+                var d = parseInt(ss[2], 10);
+                if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                    return new Date(y, m - 1, d);
+                } else {
+                    return new Date();
+                }
+            }
+
+            $('#date_debut').datebox({
+                parser: myparser,
+                formatter: myformatter,
+            }).datebox('setValue', '{{ date_debut}}');
+            $('#date_fin').datebox({
+                parser: myparser,
+                formatter: myformatter,
+            }).datebox('setValue', '{{ date_fin }}');
+            var date_debut = '{{ date_debut}}';
+            var date_fin = '{{ date_fin }}';
+
+
+            var vignetteur_table = $('#vignetteur_table').datagrid({
+                url: '/statistics/',
+                idField: 'employee__nom',
+                striped: true,
+                rownumbers: true,
+                singleSelect: true,
+                queryParams: {
+                    action: 'vignetteurs_staticstics',
+                    date_debut: date_debut,
+                    date_fin: date_fin
+                }
+                ,
+                title: 'Statistiques par employée',
+                toolbar: [{
+                    id: 'button_print',
+                    iconCls: 'icon-print',
+                    text: 'Imprimer',
+                    handler: function () {
+                        var date_debut = $('#date_debut').datebox('getValue');
+                        var date_fin = $('#date_fin').datebox('getValue');
+                        $.post('/production/', {
+                            action: 'print_statistics',
+                            date_debut: date_debut,
+                            date_fin: date_fin,
+                            csrfmiddlewaretoken: '{{ csrf_token }}'
+                        }).done(function (data) {
+                            var w = window.open('about:blank', 'windowname');
+                            w.document.write(data);
+                            w.document.close()
+                        });
+                    }
+
+                }
+                ],
+                onSelect: function () {
+                    child_table.datagrid('reload', {parent_id: parent_table.datagrid('getSelected').id})
+                }
+                ,
+                columns: [[
+                    {field: 'employee__nom', title: 'Employé', sortable: "true", width: 100},
+                    {field: 'labeling_qtt__sum', title: 'Vignettes', sortable: "true"},
+                    {field: 'souches_qtt__sum', title: 'Souches', align: 'right', sortable: "true"},
+                    {field: 'unlabeling_qtt__sum', title: 'Dé-vignettge', sortable: "true"},
+                ]],
+                method: 'get',
+                selectOnNavigation: false,
+                fitColumns: true
+            });
+
+            var lot_table = $('#lot_table').datagrid({
+                url: '/statistics/',
+                idField: 'parent__lot__lot',
+                striped: true,
+                rownumbers: true,
+                singleSelect: true,
+                queryParams: {
+                    action: 'lot_statistics',
+                    date_debut: date_debut,
+                    date_fin: date_fin
+                },
+                title: 'Statistiques par lot',
+                columns: [[
+                    {field: 'parent__lot__produit__produit', title: 'Produit', sortable: "true", width: 100},
+                    {field: 'parent__lot__lot', title: 'Lot', sortable: "true", width: 50},
+                    {field: 'parent__lot__qtt', title: 'Total Lot', sortable: "true", width: 50},
+                    {field: 'labeling_qtt__sum', title: 'Vignettes', sortable: "true"},
+                    {field: 'souches_qtt__sum', title: 'Souches', align: 'right', sortable: "true"},
+                    {field: 'unlabeling_qtt__sum', title: 'Dé-vignettge', sortable: "true"},
+                ]],
+                method: 'get',
+                selectOnNavigation: false,
+                fitColumns: true
+            });
+            $('#dashoard_id').removeClass('active');
+            $('#view_statistics').addClass('active');
+            $('#administration').removeClass('active');
+            $('#add_labeling').removeClass('active');
+            $('#view_history').removeClass('active');
+            $('#refresh_buttun').click(
+                function () {
+                    var date_debut = $('#date_debut').datebox('getValue');
+                    var date_fin = $('#date_fin').datebox('getValue');
+                    vignetteur_table.datagrid('load',
+                        {
+                            action: 'vignetteurs_staticstics',
+                            date_debut: date_debut,
+                            date_fin: date_fin
+                        });
+                    lot_table.datagrid('load',
+                        {
+                            action: 'lot_statistics',
+                            date_debut: date_debut,
+                            date_fin: date_fin
+                        });
+
+                }
+            )
+
+        }
+        initialisation();
+    </script>
+{% endblock %}
